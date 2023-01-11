@@ -1,0 +1,104 @@
+class Node:
+    def __init__(self, point, left=None, right=None):
+        self.point = point
+        self.left = left
+        self.right = right
+
+class KDTree:
+    def __init__(self, k):
+        self.k = k
+        self.root = None
+
+    def insert(self, point):
+        def insert_helper(node, point, depth):
+            if node is None:
+                return Node(point)
+
+            dim = depth % self.k
+            if point[dim] < node.point[dim]:
+                node.left = insert_helper(node.left, point, depth+1)
+            else:
+                node.right = insert_helper(node.right, point, depth+1)
+
+            return node
+
+        self.root = insert_helper(self.root, point, 0)
+
+    def range(self, min_coords, max_coords):
+        def range_helper(node, min_coords, max_coords, depth):
+            if node is None:
+                return []
+
+            results = []
+            dim = depth % self.k
+            if min_coords[dim] <= node.point[dim] <= max_coords[dim]:
+                results.append(node.point)
+
+            if min_coords[dim] <= node.point[dim]:
+                results.extend(range_helper(node.left, min_coords, max_coords, depth+1))
+
+            if node.point[dim] <= max_coords[dim]:
+                results.extend(range_helper(node.right, min_coords, max_coords, depth+1))
+
+            return results
+
+        return range_helper(self.root, min_coords, max_coords, 0)
+
+#4，5
+import random
+import time
+import matplotlib.pyplot as plt
+
+# Generate a set of random points
+def generate_points(num_points):
+    return [(random.random(), random.random()) for _ in range(num_points)]
+
+# Naive method for range search
+def naive_range_search(points, min_coords, max_coords):
+    return [point for point in points if all(min_c <= point[i] <= max_c for i, (min_c, max_c) in enumerate(zip(min_coords, max_coords)))]
+
+# K-d tree method for range search
+def kdtree_range_search(points, min_coords, max_coords):
+    tree = KDTree(points)
+    return tree.data[tree.query_ball_point(min_coords, max_coords, p=float('inf'))]
+
+# Function to visualize the time performance
+def visualize_performance():
+    num_points = [10, 100, 1000, 10000, 100000]
+    naive_times = []
+    kdtree_times = []
+
+    for n in num_points:
+        points = generate_points(n)
+        min_coords = [0, 0]
+        max_coords = [1, 1]
+
+        start = time.time()
+        naive_range_search(points, min_coords, max_coords)
+        end = time.time()
+        naive_times.append(end - start)
+
+        start = time.time()
+        kdtree_range_search(points, min_coords, max_coords)
+        end = time.time()
+        kdtree_times.append(end - start)
+
+    plt.plot(num_points, naive_times, label="Naive Method")
+    plt.plot(num_points, kdtree_times, label="K-d Tree Method")
+    plt.xlabel("Number of Points")
+    plt.ylabel("Running Time (s)")
+    plt.legend()
+    plt.show()
+
+# Nearest neighbor query using k-d tree
+def nearest_neighbor(points, target_point):
+    tree = KDTree(points)
+    _, nearest_index = tree.query(target_point)
+    return tree.data[nearest_index]
+
+# Test
+points = generate_points(100)
+target_point = (0.5, 0.5)
+result = nearest_neighbor(points, target_point)
+print(result)
+visualize_performance()
